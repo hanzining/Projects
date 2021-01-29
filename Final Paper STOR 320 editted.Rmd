@@ -1,0 +1,569 @@
+---
+title: "Final Paper"
+author: "STOR 320.02 Group 10"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(warn=-1)
+library(tidyverse)
+library(dplyr)
+library(modelr)
+library(Stat2Data)
+library(mosaic)
+library(readr)
+library(kableExtra)
+options(scipen=999)
+library(purrr)
+library(broom)
+library(class)
+library(titanic)
+library(gridExtra)
+loan1 <- read_csv("/Users/hzn//Desktop/2019 FALL/STOR320/Final Project/train.csv")
+```
+
+# INTRODUCTION
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;As a college student, buying a house seems like a decision that is years away. However, it is one that we will all be faced with soon. Buying a house is not an easy process and usually requires loans, or mortgages, to help pay for it. Since taking out loans is a  common practice for homebuyers, and since we are closer to becoming homebuyers than we may realize, our group decided to investigate housing loan data. More specifically, information on loan applicants, their desired loan amount, and whether they were accepted for a loan or not . Our group was curious as to how different variables in the data related to each other, and we were especially interested in what values for different variables might lead to an increased likelihood of a loan getting approved.  
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This type of questioning led us to begin our initial analysis. Our five group members questioned different aspects of the data as each group member made tables, models, and graphs to attempt to answer these initial questions. Next, we conducted an exploratory data analysis to further investigate these initial questions and to narrow down our focus to two questions that we thought would be most important to look into. These two questions are: ***1. What is the best model to predict loan amount based off of the other variables? 2. How can the status of an applicant’s loan best be predicted based on the given information on the applicant?***  
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The first question is important from the point of view of banks. Banks want to predict how much money an individual might request as a loan so they can market different services to different groups or demographics. For example, if a bank is aware that people with greater income are more likely to request a larger loan over a longer period of time, they might choose to market their housing loans options on billboards in wealthier neighborhoods. This is because larger loans over longer timeframes leads to more moeny made off interest for the banks. In addition to marketing advantages, banks can use this information to have a baseline rate for loans based on of what the expected loan amount may be for a given background of an applicant.   
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Originally, our second question was: ***2. How does the number of dependents relate to gender and marriage status? How do these ultimately relate to the loan amount/status?*** After further group discussion, our group decided it would be more impactful to change the question slightly. Instead of just focusing on the amount of dependents an applicant has, the applicant’s gender, and the applicant’s marital status to predict the loan status, we decided it would be more beneficial to continue looking at all of the predictors to evaluate loan status. Ultimately, we changed the second question to read: ***2. How can the status of an applicant’s loan best be predicted based off the given information on the applicant?*** Unlike the previous question, this question can be useful information for the applicant. If an applicant can predict the likelihood of his or her loan getting approved, then he or she may be able to put his or herself in a better position to get approved for a loan. For example, if in our model we find that a longer loan term contributes to an increased likelihood of getting approved for a loan, then an applicant might prefer to request a longer loan term, if they think they might not get approved otherwise. Banks or lenders may utilize a model like this online to provide to potential customers to estimate their loan approval status.  
+
+
+# DATA
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Now that we have examined the questions we intend to answer, it is important to understand what our data looks like. The data came from Dream Home Financing, a company that uses basic loan requirements to determine which lender is the best fit for the applicant. We found this data on Kaggle, and this data set was originally produced to automate the process of determining who is eligible for a loan based on customer details (variables in the data set) provided. The data set includes the following variables: *Loan ID, Gender, Marital Status, Education, Dependents, Self Employed, Applicant Income, Coapplicant income, Loan Amount, Loan Amount Term, Credit History, Property Area* and *Loan Status*. Each row contains an applicant’s detailed information.  
+	
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*Loan ID* is a unique identifier assigned to each individual. *Gender* is simply male or female. *Marital Status* is either yes or no specifying if a person is married or unmarried. *Education* is a binary variable (yes or no) which represents whether or not the individual has graduated from college. *Dependents* is a categorical variable that represents the amount of dependents the individual claims on his/her taxes, however, if the individual has three or more dependents, they would have a “3+”. *Self Employed* is a binary variable (yes or no) to show if the individual is self employed or not. *Applicant Income* is the monthly income amount of the individual specified in dollars. Coapplicant Income is the income of the coapplicant, if one exists. *Loan Amount* is the loan amount requested in thousands of dollars. *Loan Amount Term* is the number of months in which the applicant has to repay the loan. *Credit History* is a binary variable (yes or no) that represents whether or not the applicant has a credit history or not. *Property Area* is a categorical variable that can be either urban, semiurban, or rural and describes the area where the applicant resides. Lastly, *Loan Status* is a binary variable (yes or no) depending on whether the applicant’s request has been approved or not. Here is a preview of the original data table:  
+
+```{r,echo=FALSE}
+kable(head(loan1), caption= "Original Loan Data") %>% kable_styling(c("striped", "bordered"))
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Each observation in the data set represents a different application for a housing loan. Although we know the company that provided the data, Dream Home Financing, we do not know how this data was collected nor where the sample came from and understand this might be concerning when conducting an analysis and making conclusions on the data. Despite this fact, we are confident in our understanding of the data and have conducted analyses interpreting the data as best as possible. This data set provides applicant information on 500 different loan requests. We decided to remove all the rows containing a missing value because we were concerned that the missing values would make it difficult to create accurate models that best represented the entire data set.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;We noticed that some of the variables in our original data set were categorical and since we wanted to understand these variables and what they depict better, we changed the non-numerical categorical variables into numerical categorical variables. Binary variables can be viewed as either a 1 or a 0. The following variables were changed: Gender (Female = 1, Male = 0), Married (Yes = 1, No = 0), Education (Graduate = 1, Not Graduate = 0), Self Employed (Yes = 1, No = 0), and Loan Status (Yes = 1, No = 0). Property Area has three possible values so we turned it into a factor variable with values: Urban = 1, Semiurban = 2, Rural = 3. Since we are not joining any other data to our table, we dropped the irrelevant columns such as LoanID, a unique identifier. We found summary statistics on the changed variables as follows: 
+
+```{r,echo=FALSE}
+loan4=loan1
+loan4$Gender <- ifelse(loan4$Gender=="Female",1,0)
+loan4$Married <- ifelse(loan4$Married=="Yes",1,0)
+loan4$Education <- ifelse(loan4$Education=="Graduate",1,0)
+loan4$Self_Employed <- ifelse(loan4$Self_Employed=="Yes",1,0)
+loan4$Loan_Status <- ifelse(loan4$Loan_Status=="Y",1,0)
+loan4$Property_Area<-as.numeric(factor(loan1$Property_Area))
+loan4$Dependents<- as.numeric(ifelse(loan4$Dependents=="3+",3,loan4$Dependents))
+loan4<-subset(loan4,select = -c(1))
+loan_final<-na.omit(loan4)
+
+kable(head(loan_final), caption= "Updated Loan Data") %>% kable_styling(c("striped", "bordered"))
+```
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In order to better understand the data, a table with summary statistics of the variables is shown below. Immediately following it are graphs that show how each of the categorical variables interacts with the approval status of the loan. This should provide a surface-level understanding of the data set looks like:  
+
+```{r,echo=FALSE}
+summary = matrix(nrow=3,ncol=12)
+for (i in 1:12) {
+  summary[1,i] = sapply(loan_final[,i], sum)
+  summary[2,i] = sapply(loan_final[,i], mean)
+  summary[3,i] = sapply(loan_final[,i], sd)
+}
+colnames(summary) = c("Gender", "Married", "Dependents", "Education", "Self Employed", "Applicant Income", "Coapplicant Income", "Loan Amount", "Loan Amount Term", "Credit History", "Property Area", "Loan Status")
+rownames(summary) = c("Sum", "Mean", "Standard Deviation")
+
+kable(summary, caption= "Summary Table") %>% kable_styling(c("striped", "bordered"))
+
+
+females = filter(loan1, Gender == "Female")
+fcount = nrow(females)
+males = filter(loan1, Gender == "Male")
+mcount = nrow(males)
+#mcount
+#fcount
+malesA = filter(males, Loan_Status == "Y")
+mApp = nrow(malesA)
+femalesA = filter(females, Loan_Status == "Y")
+fApp = nrow(femalesA)
+#mApp
+#fApp
+p5 <- ggplot() + geom_bar(aes(y = c(fApp/fcount, (fcount - fApp)/fcount, mApp/mcount, (mcount - mApp)/mcount), x = c("female", "female", "male", "male"), fill = c("yes", "no", "yes", "no")), 
+                           stat="identity") + ylab("Proportion") + xlab("Gender")
+p5 <- p5 + guides(fill=guide_legend(title="Loan Approved"))
+
+
+Married = filter(loan1, Married == "Yes")
+Mcount = nrow(Married)
+NM = filter(loan1, Married == "No")
+Ncount = nrow(NM)
+#Mcount
+#Ncount
+NMA = filter(NM, Loan_Status == "Y")
+NApp = nrow(NMA)
+MApp = filter(Married, Loan_Status == "Y")
+MCapp = nrow(MApp)
+#NApp
+#MCapp
+p6 <- ggplot() + geom_bar(aes(y = c(MCapp/Mcount, (Mcount - MCapp)/Mcount, NApp/Ncount, (Ncount - NApp)/Ncount), x = c("Married", "Married", "Not Married", "Not Married"), fill = c("yes", "no", "yes", "no")), 
+                           stat="identity") + ylab("Proportion") + xlab("Marriage Status")
+p6 <- p6 + guides(fill=guide_legend(title="Loan Approved"))
+
+
+Married = filter(loan1, Education == "Graduate")
+Mcount = nrow(Married)
+NM = filter(loan1, Education == "Not Graduate")
+Ncount = nrow(NM)
+#Mcount
+#Ncount
+NMA = filter(NM, Loan_Status == "Y")
+NApp = nrow(NMA)
+MApp = filter(Married, Loan_Status == "Y")
+MCapp = nrow(MApp)
+#NApp
+#MCapp
+p7 <- ggplot() + geom_bar(aes(y = c(MCapp/Mcount, (Mcount - MCapp)/Mcount, NApp/Ncount, (Ncount - NApp)/Ncount), x = c("Graduate", "Graduate", "Not Graduate", "Not Graduate"), fill = c("yes", "no", "yes", "no")), 
+                           stat="identity") + ylab("Proportion") + xlab("Education")
+p7 <- p7 + guides(fill=guide_legend(title="Loan Approved"))
+
+
+Married = filter(loan1, Self_Employed == "Yes")
+Mcount = nrow(Married)
+NM = filter(loan1, Self_Employed == "No")
+Ncount = nrow(NM)
+#Mcount
+#Ncount
+NMA = filter(NM, Loan_Status == "Y")
+NApp = nrow(NMA)
+MApp = filter(Married, Loan_Status == "Y")
+MCapp = nrow(MApp)
+#NApp
+#MCapp
+p8 <- ggplot() + geom_bar(aes(y = c(MCapp/Mcount, (Mcount - MCapp)/Mcount, NApp/Ncount, (Ncount - NApp)/Ncount), x = c("Yes", "Yes", "No", "No"), fill = c("yes", "no", "yes", "no")), 
+                           stat="identity") + ylab("Proportion") + xlab("Self Employed")
+p8 <- p8 + guides(fill=guide_legend(title="Loan Approved"))
+
+
+loan17 = loan1
+loan17$Credit_History <- ifelse(loan1$Credit_History == 1,"yes","no")
+Married = filter(loan17, Credit_History == "yes")
+Mcount = nrow(Married)
+NM = filter(loan17, Credit_History == "no")
+Ncount = nrow(NM)
+#Mcount
+#Ncount
+NMA = filter(NM, Loan_Status == "Y")
+NApp = nrow(NMA)
+MApp = filter(Married, Loan_Status == "Y")
+MCapp = nrow(MApp)
+#NApp
+#MCapp
+p9 <- ggplot() + geom_bar(aes(y = c(MCapp/Mcount, (Mcount - MCapp)/Mcount, NApp/Ncount, (Ncount - NApp)/Ncount), x = c("yes", "yes", "no", "no"), fill = c("yes", "no", "yes", "no")), 
+                           stat="identity") + ylab("Proportion") + xlab("Credit History")
+p9 <- p9 + guides(fill=guide_legend(title="Loan Approved"))
+
+
+Urban = filter(loan1, Property_Area == "Urban")
+Semiurban = filter(loan1, Property_Area == "Semiurban")
+Rural = filter(loan1, Property_Area == "Rural")
+Ucount = nrow(Urban)
+Scount = nrow(Semiurban)
+Rcount = nrow(Rural)
+UA = filter(Urban, Loan_Status == "Y")
+SA = filter(Semiurban, Loan_Status == "Y")
+RA = filter(Rural, Loan_Status == "Y")
+UAcount = nrow(UA)
+SAcount = nrow(SA)
+RAcount = nrow(RA)
+p10 <- ggplot() + geom_bar(aes(y = c(UAcount/Ucount, (Ucount - UAcount)/Ucount, SAcount/Scount, (Scount - SAcount)/Scount, RAcount/Rcount, (Rcount - RAcount)/Rcount), x = c("Urban", "Urban", "Semiurban", "Semiurban", "Rural", "Rural"), fill = c("yes", "no", "yes", "no", "yes", "no")), 
+                           stat="identity") + ylab("Proportion") + xlab("Property Area")
+p10 <- p10 + guides(fill=guide_legend(title="Loan Approved"))
+
+grid.arrange(p5, p6, p7, p8, p9, p10, nrow = 3)
+
+```
+
+# RESULTS 
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;To answer our first question about predicting loan amount based on the other variables, we first decided to exclude the loan status variable from our analysis since loan status is determined after the individual applies for a loan. It is not an indication of how much the individual will apply for. When building this model, we initially wanted to use our numerical variables to compare to loan amount. We predicted that the variables Applicant Income and Coapplicant Income would be the best numerical predictors of Loan Amount. In addition, we noticed that predicting Loan Amount with Total Income has a higher r-squared value (0.335) than predicting Loan Amount with just Applicant Income (0.242) or Coapplicant Income (0.077). For this reason, we decided to combine Applicant Income and Coapplicant Income into a new variable called Total Income. Next, when plotting Total Income on Loan Amount, we noticed a clear non-linear trend (shown below). This led us to utilize a logarithmic transformation on the Total Income. The density curves of before and after the transformation are shown here.
+
+
+```{r, echo=FALSE,warning=F,message=F}
+loan4=loan1
+loan4$Gender <- ifelse(loan4$Gender=="Female",1,0)
+loan4$Married <- ifelse(loan4$Married=="Yes",1,0)
+loan4$Education <- ifelse(loan4$Education=="Graduate",1,0)
+loan4$Self_Employed <- ifelse(loan4$Self_Employed=="Yes",1,0)
+loan4$Loan_Status <- ifelse(loan4$Loan_Status=="Y",1,0)
+loan4$Property_Area<-as.numeric(factor(loan4$Property_Area))
+loan4$Dependents<- ifelse(loan4$Dependents=="3+",3,loan4$Dependents)
+
+# create a new column 
+loan4=mutate(loan4,
+                    TotalIncome=ApplicantIncome+CoapplicantIncome)
+# eliminate the missing values
+# 10-fold cross validation
+loan_final<-na.omit(loan4)
+Lfinal=loan_final%>%crossv_kfold(10)
+
+modd1=lm(LoanAmount~ApplicantIncome,data=loan_final)
+modd2=lm(LoanAmount~CoapplicantIncome,data=loan_final)
+modd3=lm(LoanAmount~TotalIncome,data=loan_final)
+
+#summary(modd1)$adj.r.squared
+#summary(modd2)$adj.r.squared
+#summary(modd3)$adj.r.squared
+
+suppressMessages(print(ggplot(loan_final)+ 
+  geom_point(aes(x=TotalIncome, y=LoanAmount)) +
+  geom_smooth(aes(x=TotalIncome, y=LoanAmount))+
+    xlab("Total Income")+
+    ylab("Loan Amount")))
+
+ggplot(loan_final,aes(x=TotalIncome))+
+  geom_density(fill="lightblue")+
+  geom_vline(aes(xintercept=mean(ApplicantIncome)),
+            color="red", size=1)+
+  ylab("Density")+
+  xlab("Total Income")
+
+ggplot(loan_final,aes(x=log(TotalIncome)))+
+  geom_density(fill="lightblue")+
+  geom_vline(aes(xintercept=mean(log(TotalIncome))),
+            color="red", size=1)+
+  ylab("Density")+
+  xlab("Total Income")
+
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;After the transformation, it is clear that the density curve is closer to a normal distribution and a bell-shaped curve. This is a good sign that we chose a good transformation for the model.
+In order to decide what degree polynomial to use for our numerical variables in the model, we used RMSE Cross-Validation and I and J subset plots. We created a function to calculate RMSE and to choose the best model based on lowest RMSE. When using these plots to determine which model to use, we found that I=3 and J =1 produced the lowest average RMSE. However, I=1 and J=1 had an RMSE value that was only about 0.1 away to that of I=3, J=1. 
+ 
+
+```{r, include=FALSE}
+RMSE.func=function(actual,predict){
+  mse=mean((actual-predict)^2,na.rm=T)
+  rmse=sqrt(mse)
+  return(rmse)
+}
+
+train.model.func=function(data,I,J){
+  mod=lm(LoanAmount~poly(log(TotalIncome),I)+poly(Loan_Amount_Term,J)+Credit_History+Gender+Married+Education+Self_Employed+Dependents,data=data)
+   return(mod)
+}
+
+OUTRMSE=matrix(NA,6,6) #DO NOT CHANGE
+for(i in 1:6){
+  for(j in 1:6){
+    LDATA=Lfinal %>% 
+       mutate(tr.model=map(train,train.model.func,i,j))
+    
+    LDATA.PREDICT = LDATA %>% 
+          mutate(predict=map2(test,tr.model,~augment(.y,newdata=.x))) %>%
+          select(predict) %>%
+          unnest()
+    
+      OUTRMSE[i,j] = RMSE.func(actual=LDATA.PREDICT$LoanAmount,predict=LDATA.PREDICT$.fitted)
+  }
+}
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In fact, the best 5 models based on RMSE that the function chose, all have very similar predicted loan amounts. 
+
+```{r, echo=FALSE}
+OUTRMSE2=as.tibble(OUTRMSE) %>% 
+  mutate(I=1:6) %>% 
+  rename(`1`=V1,`2`=V2,`3`=V3,`4`=V4,`5`=V5,`6`=V6) %>%
+  select(I,everything()) %>%
+  gather(`1`:`6`,key="J",value="RMSE",convert=T) %>%
+  mutate(I=as.factor(I),J=as.factor(J))
+
+BEST3.RMSE = OUTRMSE2 %>% 
+  arrange(RMSE)%>%
+  slice(1:5)
+
+
+BEST3.DATA=loan_final %>%
+            mutate(First=predict(lm(LoanAmount~poly(log(TotalIncome),as.numeric(BEST3.RMSE$I[1]))+poly(Loan_Amount_Term,as.numeric(BEST3.RMSE$J[1])),data=loan_final)),
+                   Second=predict(lm(LoanAmount~poly(log(TotalIncome),as.numeric(BEST3.RMSE$I[2]))+poly(Loan_Amount_Term,as.numeric(BEST3.RMSE$J[2])),data=loan_final)),
+                   Third=predict(lm(LoanAmount~poly(log(TotalIncome),as.numeric(BEST3.RMSE$I[3]))+poly(Loan_Amount_Term,as.numeric(BEST3.RMSE$J[3])),data=loan_final)),
+                   Fourth=predict(lm(LoanAmount~poly(log(TotalIncome),as.numeric(BEST3.RMSE$I[4]))+poly(Loan_Amount_Term,as.numeric(BEST3.RMSE$J[4])),data=loan_final)),
+                   Fifth=predict(lm(LoanAmount~poly(log(TotalIncome),as.numeric(BEST3.RMSE$I[5]))+poly(Loan_Amount_Term,as.numeric(BEST3.RMSE$J[5])),data=loan_final)))
+
+BEST3.DATA2 = BEST3.DATA %>% gather(First:Fifth,key="Model",value="Predict",factor_key=T)
+kable(head(BEST3.RMSE), caption= "Best 5 Models") %>% kable_styling(c("striped", "bordered"))
+
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The figure below shows that the predictions all overlap and there is no large difference in the predictions across the 5 best models. For this reason, we decided to use I=1, J=1 since this model is simpler.
+
+```{r, echo=F}
+ggplot(BEST3.DATA2) +
+  geom_point(aes(x=log(TotalIncome),y=LoanAmount),alpha=0.05,stroke=0) +
+  xlab("Total Income ")+
+  ylab("Loan Amount ") +
+  geom_line(aes(x=log(TotalIncome),y=Predict,color=Model))
+```
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+After that, we made a fitted vs. predicted scatter plot to show how well the model we chose (I=1, J=1) predicts the Loan Amount. We included a diagonal line at y = x to compare the accuracy of our model. It appears that our model does a fairly good job at predicting the data since that line goes directly through the scatter plot. 
+
+```{r, echo=FALSE}
+loan_final %>% mutate(fitted=predict(train.model.func(loan_final,I=1,J=1))) %>%
+  ggplot() +
+  geom_point(aes(x=LoanAmount,y=fitted)) +
+  xlab("Actual") +
+  ylab("Fitted") +
+  geom_abline(slope=1,intercept=0,color="red")
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;We also made a residual plot to determine if our residuals are evenly distributed around the x-axis.
+
+```{r, echo=FALSE}
+loan_final %>% mutate(res=residuals(train.model.func(loan_final,I=1,J=1))) %>%
+  ggplot() +
+  geom_point(aes(x=log(TotalIncome),y=res)) +
+  xlab("Total Income") +
+  ylab("Residual") +
+  geom_hline(yintercept=0,color="red")
+```
+```{r,include=F}
+mod4=lm(LoanAmount~log(TotalIncome)+Loan_Amount_Term+Dependents+Self_Employed,data=loan_final)
+summary(mod4)
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;We use multiple selection processes to select the best combination of predictors to predict the loan amount. The selection methods that we used take into account the models for each combination of variables and produces outputs to show the Mallow’s Cp value for each. Mallow’s Cp is a value that assesses the fit of a regression model that has been estimated using least squares. Both of the methods that we used produced the best model as being the one that includes loan term, total income, dependents, and self-employed as predictors. It is interesting that the model we came up with does not include all the predictors and the r-squared value of the model was only 0.502. Therefore, the model only accurately predicts *Loan Amount* about 50% of the time.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;When making models for the second question, about the best model to predict the loan status, we decided that every variable should be used as a predictor. When banks distribute loans, they ask for all of an individual’s information, and it would be wrong for us to keep certain variables out of our model. For this reason, we found the best multiple linear regression model to predict the loan status using the largest adjusted r-squared value. Additionally, we used a K-Nearest Neighbors modeling process to predict the loan status outcome. The K-Nearest Neighbors process involves finding the closest neighbors to a given point, and using the given outcomes of the neighbors to predict the outcome of the given point. So, for example, if I set K = 5 and input a given point with values of LoanAmount, Education, CreditHistory, ApplicantIncome, etc., it finds the 5 data points with the most similar values as the given point and looks at whether most of those 5 points were accepted or rejected to predict the outcome of the given point. To build this model, we needed to standardize the range and distribution of the variables to prevent different variables for accounting for too much of the distance from the given point. Next, we determined the optimal K value for predicting Loan Status. We checked K values 1-250, and concluded that a K value of 11 led to the best predictor of Loan Status since it resulted in the largest probability of an accurate prediction. With a K of 11, the K-Nearest Neighbors model was accurate approximately 81% of the time.  
+
+```{r, echo=FALSE}
+loan1 = na.omit(loan1)
+loan4=loan1
+loan4$Gender <- ifelse(loan4$Gender=="Female",1,0)
+loan4$Married <- ifelse(loan4$Married=="Yes",1,0)
+loan4$Education <- ifelse(loan4$Education=="Graduate",1,0)
+loan4$Self_Employed <- ifelse(loan4$Self_Employed=="Yes",1,0)
+loan4$Loan_Status <- ifelse(loan4$Loan_Status=="Y",1,0)
+loan4$Property_Area<-as.numeric(factor(loan1$Property_Area))
+loan4$Dependents<-as.numeric(ifelse(loan4$Dependents=="3+",3,loan4$Dependents))
+#print(loan4)
+k=5
+
+dist.func=function(point1,point2){
+  dist=sqrt(sum((point1-point2)^2))
+  return(dist)
+}
+bob = c(1, 1, 3, 1, 0, 5000, 0, 100, 360, 1, 2)
+
+#dist.func(c(3,100, 5), c(4,101, 6))
+#T4 = T2[1:5,]
+
+T3=loan4 %>% 
+      mutate(d=apply(select(loan4,Gender,Married, Dependents, Education, Self_Employed, ApplicantIncome, CoapplicantIncome, LoanAmount, Loan_Amount_Term, Credit_History, Property_Area),1,dist.func,point2=bob)) %>%
+      arrange(d) %>%
+      filter(rank(d,ties.method="min")<=k)
+
+#print(T3)
+
+mean.Gender=mean(loan4$Gender)
+sd.Gender=sd(loan4$Gender)
+mean.Married=mean(loan4$Married)
+sd.Married=sd(loan4$Married)
+mean.Dependents=mean(loan4$Dependents)
+sd.Dependents=sd(loan4$Dependents)
+mean.Education=mean(loan4$Education)
+sd.Education=sd(loan4$Education)
+mean.Self_Employed=mean(loan4$Self_Employed)
+sd.Self_Employed=sd(loan4$Self_Employed)
+mean.ApplicantIncome=mean(loan4$ApplicantIncome)
+sd.ApplicantIncome=sd(loan4$ApplicantIncome)
+mean.CoapplicantIncome=mean(loan4$CoapplicantIncome)
+sd.CoapplicantIncome=sd(loan4$CoapplicantIncome)
+mean.LoanAmount=mean(loan4$LoanAmount)
+sd.LoanAmount=sd(loan4$LoanAmount)
+mean.Loan_Amount_Term=mean(loan4$Loan_Amount_Term)
+sd.Loan_Amount_Term=sd(loan4$Loan_Amount_Term)
+mean.Credit_History=mean(loan4$Credit_History)
+sd.Credit_History=sd(loan4$Credit_History)
+mean.Property_Area=mean(loan4$Property_Area)
+sd.Property_Area=sd(loan4$Property_Area)
+
+
+ST7= loan4 %>% 
+        mutate(Gender=(Gender-mean.Gender)/sd.Gender,
+               Married=(Married-mean.Married)/sd.Married, Dependents=(Dependents-mean.Dependents)/sd.Dependents, Education=(Education-mean.Education)/sd.Education, Self_Employed=(Self_Employed-mean.Self_Employed)/sd.Self_Employed, ApplicantIncome=(ApplicantIncome-mean.ApplicantIncome)/sd.ApplicantIncome, CoapplicantIncome=(CoapplicantIncome-mean.CoapplicantIncome)/sd.CoapplicantIncome, LoanAmount=(LoanAmount-mean.LoanAmount)/sd.LoanAmount, Loan_Amount_Term=(Loan_Amount_Term-mean.Loan_Amount_Term)/sd.Loan_Amount_Term, Credit_History=(Credit_History-mean.Credit_History)/sd.Credit_History, Property_Area=(Property_Area-mean.Property_Area)/sd.Property_Area)
+
+#Z.bob=(bob-c(mean.Gender,mean.Fare))/c(sd.Family,sd.Fare)
+
+ST8=ST7 %>% 
+      mutate(d=apply(select(loan4,Gender,Married, Dependents, Education, Self_Employed, ApplicantIncome, CoapplicantIncome, LoanAmount, Loan_Amount_Term, Credit_History, Property_Area),1,dist.func,point2=bob)) %>%
+      arrange(d) %>%
+      filter(rank(d,ties.method="min")<=k)
+
+
+accuracy.k=rep(NA,250)
+for(k in 1:250){
+ cv.out=knn.cv(train=select(ST7, Gender, Married, Dependents, Education, Self_Employed, ApplicantIncome, CoapplicantIncome, LoanAmount, Loan_Amount_Term, Credit_History, Property_Area),
+                cl=factor(ST7$Loan_Status,levels=c(0,1),labels=c("Accept","Reject")),
+                k=k)
+  
+  correct=mean(cv.out==factor(ST7$Loan_Status,levels=c(0,1),labels=c("Accept","Reject")))
+  
+  accuracy.k[k]=correct
+}
+best.k=which.max(accuracy.k)
+possible.k=1:250
+ggplot(data=tibble(possible.k,accuracy.k)) +
+  geom_line(aes(x=possible.k,y=accuracy.k),color="lightskyblue2",size=2) +
+  theme_minimal() +
+  xlab("Choice of k") +
+  ylab("Accuracy of Prediction") +
+  theme(text=element_text(size=20))
+#best.k
+
+#summary(loan4)
+
+```
+```{r,include=F,echo=F}
+knitr::opts_chunk$set(echo = TRUE)
+library("tidyverse")
+library("Hmisc")
+library("outliers")
+library("data.table")
+library("hexbin")
+library("rcompanion")
+library("caret")
+library("mlr")
+library("rattle")
+library("rpart")
+LPData = read.csv(file="/Users/hzn//Desktop/2019 FALL/STOR320/Final Project/train.csv",header=T,sep=",")
+LPData$Gender=as.numeric(LPData$Gender)
+LPData$Gender[LPData$Gender=="Male"]=1
+LPData$Gender[LPData$Gender=="Female"]=0
+LPData$Married=as.numeric(LPData$Married)
+LPData$Married[LPData$Married=="No"]=1
+LPData$Married[LPData$Married=="Yes"]=0
+LPData$Dependents=as.numeric(LPData$Dependents)
+LPData$Dependents[LPData$Dependents=="3+"]=3
+LPData$Education=as.numeric(LPData$Education)
+LPData$Education[LPData$Education=="Graduate"]=1
+LPData$Education[LPData$Education=="Not Graduate"]=0
+LPData$Self_Employed=as.numeric(LPData$Self_Employed)
+LPData$Self_Employed[LPData$Self_Employed=="No"]=0
+LPData$Self_Employed[LPData$Self_Employed=="Yes"]=1
+LPData$Property_Area=as.numeric(LPData$Property_Area)
+LPData$Property_Area[LPData$Property_Area=="Urban"]=1
+LPData$Property_Area[LPData$Property_Area=="Semiurban"]=2
+LPData$Property_Area[LPData$Property_Area=="Rural"]=3
+LPData$Loan_Status=as.numeric(LPData$Loan_Status)
+LPData$Loan_Status[LPData$Loan_Status=="N"]=0
+LPData$Loan_Status[LPData$Loan_Status=="Y"]=1
+LPData$Loan_ID=as.numeric(LPData$Loan_ID)
+LPData$Loan_ID[LPData$Loan_ID=="LP"]=0
+LPData$Loan_Status[LPData$Loan_Status==2]=0 
+LPData1 = mutate_all(LPData, function(x) as.numeric(as.character(x))) 
+LPD=LPData1 %>% drop_na()
+```
+
+  
+  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;However, when addressing the second question, ***How can the status of an applicant’s loan best be predicted based off the given information on the applicant?***, evaluation of predictor variables in relation to the explanatory variable, Loan Status, is also important. Doing this required the building of three models based on the correlation between predictor variables and loan status.
+
+
+```{r, include=F}
+cor.test(LPD$Gender,LPD$Loan_Status, method="pearson")
+cor.test(LPD$Married,LPD$Loan_Status, method="pearson")
+cor.test(LPD$Dependents,LPD$Loan_Status, method="pearson")
+cor.test(LPD$Education,LPD$Loan_Status, method="pearson")
+cor.test(LPD$Self_Employed,LPD$Loan_Status, method="pearson")
+cor.test(LPD$ApplicantIncome,LPD$Loan_Status, method="pearson")
+cor.test(LPD$CoapplicantIncome,LPD$Loan_Status, method="pearson")
+cor.test(LPD$LoanAmount,LPD$Loan_Status, method="pearson")
+cor.test(LPD$Loan_Amount_Term,LPD$Loan_Status, method="pearson")
+cor.test(LPD$Credit_History,LPD$Loan_Status, method="pearson")
+cor.test(LPD$Property_Area,LPD$Loan_Status, method="pearson")
+```
+
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The subsequent models built were based on an increasing sequential list of correlation values. The first model was built using only Credit History as the predicting variable of Loan Status. With a p-value of 2.2e-16, Credit History’s significance in predicting Loan Status is the most significant. The second model was built using Credit History and Loan Amount as predictor variables for Loan Status. The p-value of Loan Amount is 0.08167, making it the second highest significant predicting variable. And lastly, the third model was built using every variable found in the data set. These three models were chosen to test different aspects of the modeling. Each model will use logistic regression, as we are attempting to predict binary variables. 
+
+```{r,include=F, echo=F}
+mod1= glm(Loan_Status~Credit_History, family= binomial(logit),data= LPD)
+print(mod1)
+mod2= glm(Loan_Status~Credit_History+LoanAmount, family=binomial(logit),data= LPD)
+print(mod2)
+mod3= glm(Loan_Status~Gender+Married+Dependents+Education+Self_Employed+ApplicantIncome+LoanAmount+Loan_Amount_Term+Credit_History+Property_Area, family= binomial(logit),data= LPD)
+print(mod3)
+accuracy(list(mod1,mod2,mod3),plotit=T,digits=3)
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The first model is the simplest, while the second model includes more significance than the first. Using these two models, we can explore whether more significant variables add to the accuracy of the model. However, since many of the variables have possible co-correlation between them, the third model allows us to see if taking all of the variables into account, despite significance in prediction, gives us higher accuracy. After building the models, we test their accuracy against the Loan Data Set with the R function “accuracy”, which tests accuracy with multiple tests. Looking at the values, there is little difference between the logistic models. Model 1 has an accuracy rating of .157, with Model 2 and Model 3 garnering ratings of .159 and .161, respectively. While the general trend seems to be greater complexity equating to greater accuracy, the differences between the models are not significant. One factor that can be addressed is the poor accuracy of the models. While we are predicting the binary variable of Loan Status (Yes or No), this can prove difficult with the number of non-binary variables to account for, just by visually analyzing the scatterplots of the three models. Decision tree modeling may prove more effective in providing an accurate model for Loan Status. “A decision tree is a decision support tool that uses a tree-like graph or model of decisions and their possible consequences, including chance event outcomes, resource costs, and utility. It is one way to display an algorithm that only contains conditional control statements.” (Brid, Rajesh S. Decision Trees: A Simple Way to Visualize Decisions. 3 Oct. 2018, https://medium.com/greyatom/decision-trees-a-simple-way-to-visualize-a-decision-dc506a403aeb.) Due to the nature of our loan data set, this model may be better at predicting Loan Status, due to its favorability towards chance outcome events and conditional control statements. In order to build decision trees, we must first build train and test data sets from the original Loan Data Set. Once this is done, our models can begin their training. We follow the same rational as before, using various models based on significant predictor variables. Doing so may allow us to see more of the nuance among variables, leading to higher accuracy. The first decision tree model is Fit 1, which uses all of the variables in the Loan Data set. Fit 2 employs just Credit History to predict Loan Status. Finally, Fit 3 uses Credit History and Loan Amount, the two highest significance variables in predicting Loan Status. 
+
+
+```{r, include=F}
+ntrain = cbind(Loan_Status=LPD$Loan_Status,LPD$Loan_Status[1:328])
+ntrain.df1= as.data.frame((ntrain))
+Loan_Status = as.factor(sample(c(0,1),replace=TRUE,size=dim(LPD)[1]))
+ntest = cbind(Loan_Status)
+ntest.df= as.data.frame((ntest))
+ntest.df$Loan_Status[ntest.df$Loan_Status==1]=0
+ntest.df$Loan_Status[ntest.df$Loan_Status==2]=1
+ntrain.df=select(ntrain.df1,Loan_Status)
+#head(ntrain.df)
+#kable(head(ntrain.df)) %>% kable_styling(c("striped", "bordered"))
+#head(ntest.df)
+#kable(head(ntest.df)) %>% kable_styling(c("striped", "bordered"))
+ntrain.df$Loan_Status=as.factor(ntrain.df$Loan_Status)
+ntest.df$Loan_Status=as.factor(ntest.df$Loan_Status)
+trainTask = makeClassifTask(data = ntrain.df,target = "Loan_Status")
+testTask = makeClassifTask(data = ntest.df, target = "Loan_Status")
+tree = makeLearner("classif.rpart", predict.type = "response")
+set_cv = makeResampleDesc("CV",iters = 3L)
+treepars = makeParamSet(
+        makeIntegerParam("minsplit",lower = 10, upper = 50),
+        makeIntegerParam("minbucket", lower = 5, upper = 50),
+        makeNumericParam("cp", lower = 0.001, upper = 0.2))
+tpcontrol = makeTuneControlRandom(maxit = 100L)
+rm(acc)
+set.seed(11)
+mod4 = tuneParams(learner = tree, resampling = set_cv, 
+      task = trainTask, par.set = treepars, control = tpcontrol, measures = acc)
+```
+```{r, echo=F}
+tunedtree = setHyperPars(tree, par.vals=mod4$x)
+treefit = train(tunedtree, trainTask)
+par(mfrow=c(1,1))
+fit1= rpart(Loan_Status~Credit_History+Property_Area+ApplicantIncome+CoapplicantIncome+LoanAmount, data=LPD)
+fancyRpartPlot(fit1)
+fit2= rpart(Loan_Status~Credit_History, data=LPD)
+fancyRpartPlot(fit2)
+fit3= rpart(Loan_Status~Credit_History+LoanAmount, data=LPD)
+fancyRpartPlot(fit3)
+```
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Using a Confusion Matrix, we take the predictions for Loan Status and compare them to the amounts found in the Loan Data Set. When analyzed for accuracy against the original data set, Fit 1 was found to have .54269 accuracy, while Fit 2 had .80278 and Fit 3 had .79439 accuracy values. Fit 2 and Fit 3 have almost identical accuracy measures. However, we find substantial difference by looking further into the Confusion Matrix at each model’s precision. While Fit 3 has a precision value of 0.73684, Fit 2 has a value of 0.90476. Not only is this significantly higher than the precision of Fit 3, but higher than the accuracy of Fit 2 as well; Fit 3’s precision is lower than it’s accuracy. Through comparison of the accuracy and precision of the test, we can safely say that Fit 2 is the best model for predicting Loan Status, given the Loan Data Set. This contradicts the slightly negative correlation between simplicity and accuracy that was found when analyzing the logistical models. Fit 2 has the highest accuracy, followed closely by Fit 3 and Fit 1 less so, supports a conclusion that the simpler the model, the higher the accuracy is achieved by the model. Ultimately, we achieved a peak model accuracy of 80.3%, by using Credit History to predict Loan Status in a Decision Tree Model. This is almost identical to the 81% accuracy achieved by the K-NN model. What this shows is that, based on evaluation of models based on significant variables, >80% accuracy can be achieved, either by K-NN or Decision Tree Modeling. 
+
+
+#CONCLUSION  
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In summary, the goal of this paper was to answer questions that we had about this loan data set. These questions were: ***1. What is the best model to predict loan amount based off of the other variables? 2. How can the status of an applicant’s loan best be predicted based off the given information on the applicant?*** In order to answer these questions, we made different types of models and followed different processes to get a better understanding of what to make of the data. For each question we were able to make multiple insights.  
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For the first question, we used RMSE Cross-Validation to make I and J subset models to determine the degree of the polynomial model to use. We discovered that the average RMSE was within 0.1 for the 5 best models. Although the model we chose, when I=1 and J=1, was not the model with the lowest average RMSE, it was the simplest and was one of the 5 best models. For this reason, we used a first degree polynomial model to create a model to determine *Loan Amount*. Next, using different types of selection methods, we found that the best model to predict *Loan Amount* is the one that includes *Loan Amount Term, Total Income, Dependents*, and *Self Employed* as predictors. It is interesting that the model we came up with does not include all the predictors. After selecting the best model, we discovered that the r-squared value of the model was 0.502. Therefore, the model only accurately predicts *Loan Amount* about 50% of the time. This could be problematic for whoever is using the model and shows that it is difficult to predict *Loan Amount*. This makes sense because based on the given variables, most of which are categorical, it can be very difficult to predict the amount that an individual requests as a loan since there are other factors that go into a decision like that. This extra information could include: family size, external monetary support, number of vehicles owned, or prior loans.
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In Question 2, we discovered that the best model when factoring ease of use and accuracy for predicting Loan Status is the simplest, using only the most significant variable “Credit History” to predict Loan Status. K-NN showed that a K of 11 provides the highest accuracy model. While logistical modeling showed that there is little difference between the simplest and most complex models, the level of accuracy was very low. By using Decision Tree Modeling, a better fit, compared to the logistic model, for our loan prediction scenario, we found that accuracy can be maximized by using only the highest correlative variable, rather than any subsequent combinations of decreasing significant variables. 
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;When conducting further research, it appeared that our models built to predict the loan status have a direct application in the real world. Experts from the banking industry have even mentioned that “[p]redicting credit defaulters is a difficult task for the banking industry,” but that “[t]he loan status is one of the quality indicators of the loan.” Additionally, “[t]he loan status is used for creating a credit scoring model. The credit scoring model is used for accurate analysis of credit data to find defaulters and valid customers.” (Arutjothi, G, and C Senthamarai. “Prediction of Loan Status in Commercial Bank Using Machine Learning Classifier.” IEEExplore Digital Library, 21 June 2018, https://ieeexplore.ieee.org/document/8389442). Clearly, predicting loan amount, and subsequent loan status is highly important within the banking industry. By having a model that can accurately predict loan status, banks can accurately predict the amount of credit defaulters. This data is valuable, as it allows banks to assess risk associated with credit defaulters, ultimately minimizing this risk and saving money. The world banking industry deals with large amounts of capital, and increasing prediction accuracy a single percent has the potential to save a bank lots of money. With the models that we provide, we can predict loan status with about 80% accuracy, using either model. Many loan status models that banks use report with about 75% accuracy, meaning that our models are relatively accurate within the banking industry (Arutjothi, G, and C Senthamarai. “Prediction of Loan Status in Commercial Bank Using Machine Learning Classifier.” IEEExplore Digital Library, 21 June 2018, https://ieeexplore.ieee.org/document/8389442). However, with marginal differences (in accuracy, precision, etc.) equating to large amounts of capital gained or lost, there is always a motivation for the improvement of loan status prediction models. For future modeling, changes in data collection can increase the robustness of the model. Data that would be useful to collect in predicting loan amount and status would be credit score. Having a measure of credit history, the most significant variable explaining loan status, could certainly attribute to an increase in model fit and robustness. Additionally, adding information previously mentioned such as family size, external monetary support, number of vehicles owned, or prior loans could help to better predict the amount that an individual requests for a loan. Loan data, and other financial related data, will continue to be crucial for financial institutions and as technology and modeling capabilities continue to improve, so will the quality of modeling and predictions like the ones we conducted on loans.
+
+
+
+
+
+
+
+

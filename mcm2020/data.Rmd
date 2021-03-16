@@ -1,0 +1,179 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(readr)
+hair_dryer <- read_tsv("~/Downloads/Problem_C_Data/hair_dryer.tsv")
+microwave <- read_tsv("~/Downloads/Problem_C_Data/microwave.tsv")
+pacifier <- read_tsv("~/Downloads/Problem_C_Data/pacifier.tsv")
+hair_dryer_ratio <- read_tsv("~/Desktop/2020 Spring/2020 C /hair_dryer_ratio.tsv")
+View(hair_dryer_ratio)
+```
+```{r}
+hair_dryer_ratio$review_week = as.Date(cut(hair_dryer_ratio$review_date, breaks = "week"))
+
+table(hair_dryer_ratio$product_parent)
+max1=subset(hair_dryer_ratio,product_parent=="47684938")
+
+sub25_ts = data.frame(max1[,8],max1[,17])
+sub25_ts2<-aggregate(star_rating ~ review_month, sub25_ts , mean)
+#View(sub25_ts2)
+ggplot( data = sub25_ts2, aes(review_month, star_rating)) + geom_line() + labs(title = "Time series of mean star rating every month vs. review month for hair_dryer", y="mean star rating every month", x = "review month")
+```
+
+
+```{r}
+# hairdryer
+mean(hair_dryer$star_rating)
+sd(hair_dryer$star_rating)
+#par(mfrow=c(1,3))
+ colors = c("lightgreen", "khaki", "purple", "orange", "lightblue",  "plum1") 
+hist(hair_dryer$star_rating,right=F,col=colors)
+hist(microwave$star_rating,right=F,col=colors)
+hist(pacifier$star_rating,right=F,col=colors)
+
+```
+
+
+```{r}
+library(itsmr)
+sub25=hair_dryer_ratio[1:2224,]
+View(sub25)
+
+plotc()
+```
+
+
+```{r}
+mean(hair_dryer$helpful_votes)
+median(hair_dryer$helpful_votes)
+sd(hair_dryer$helpful_votes)
+
+mean(hair_dryer$total_votes)
+median(hair_dryer$total_votes)
+sd(hair_dryer$total_votes)
+
+hair_dryer_ratio <- read_tsv("~/Desktop/2020 Spring/2020 C /hair_dryer_ratio.tsv")
+View(hair_dryer_ratio)
+
+# mean for helpful ratio when there is a comment
+mean(na.omit(hair_dryer_ratio$helpful_total_ratio))
+```
+
+```{r}
+# x: rating , y: vote helpful ratio
+head(hair_dryer_ratio)
+not_na_idx = is.na(hair_dryer_ratio$helpful_total_ratio)==FALSE
+
+hair_dryer_srtr<-aggregate(star_rating~helpful_total_ratio, hair_dryer_ratio[not_na_idx,] , mean)
+ggplot(data = hair_dryer_srtr, aes(helpful_total_ratio,star_rating))+geom_point() + labs(title = "Scatterplot of mean star rating vs.  helpful ratio (excluding NA) for hair_dryer", y="mean star rating", x = "helpful ratio")
+```
+
+
+
+
+```{r}
+library(sqldf)
+library(RSQLite)
+sqldf("select * from microwave
+      where review_id='RY52KZABZK8QF'")
+```
+#hair_dryer
+```{r}
+library(sqldf)
+library(RSQLite)
+library(caTools)
+library(tm)
+```
+
+#split
+```{r}
+set.seed(1)
+tr=sample.split(hair_dryer[,1],SplitRatio=1/2)
+hair_tr=hair_dryer[tr,]
+hair_tr
+```
+
+
+#1. word frequency
+```{r}
+bad_hair = sqldf("select * from hair_tr
+                  where star_rating='1' or star_rating='2' or star_rating='3'")
+
+review_hair_bad <- paste(hair.tr.bad$review_body, collapse=" ")
+
+review_hair_source_bad=VectorSource(review_hair_bad)
+corpus_hair_bad=Corpus(review_hair_source_bad)
+
+corpus_hair_bad=tm_map(corpus_hair_bad,content_transformer(tolower))
+corpus_hair_bad=tm_map(corpus_hair_bad,removePunctuation)
+corpus_hair_bad=tm_map(corpus_hair_bad,stripWhitespace)
+corpus_hair_bad=tm_map(corpus_hair_bad,removeWords,stopwords("english"))
+
+dtm_hair_bad=DocumentTermMatrix(corpus_hair_bad)
+dtm2_hair_bad=as.matrix(dtm_hair_bad)
+
+freq_hair_bad=colSums(dtm2_hair_bad)
+freq_hair_bad=sort(freq_hair_bad,decreasing=TRUE)
+
+freq_hair_bad
+```
+```{r}
+dtm_hair_bad=DocumentTermMatrix(corpus_hair_bad)
+dtm2_hair_bad=as.matrix(dtm_hair_bad)
+
+freq_hair_bad=colSums(dtm2_hair_bad)
+freq_hair_bad=sort(freq_hair_bad,decreasing=TRUE)
+
+freq_hair_bad
+```
+
+```{r}
+a=sqldf("select review_body from hair_dryer
+      where review_body like '%update%'")
+before=rep(NA,65)
+after=rep(NA,65)
+for(i in 1: length(a[,1])){
+  before[i]=unlist(strsplit(a[i,],split="update"))[1]
+  after[i]=unlist(strsplit(a[i,],split="update"))[2]
+}
+
+df=data.frame(before,after)
+View(df)
+
+```
+
+```{r}
+helper <- function(corpus){
+  # take in a col of corpus, in MCM, is the review body or headline
+  tokens <- data_frame(text = corpus) %>% unnest_tokens(word, text)
+  sentiment <- tokens %>%
+    inner_join(get_sentiments("bing"),by="word") %>% # pull out only sentiment words
+    count(sentiment) %>% # count the # of positive & negative words
+    spread(sentiment, n, fill = 0) %>% # made data wide rather than narrow
+    mutate(positive_ratio = (positive)/(positive+negative) )# # of positive words - # of negative owrds
+  
+  return(sentiment)
+}
+
+library(tidyverse)
+library(tidytext)
+library(glue)
+library(stringr)
+helper(as.vector(df[,1]))
+helper(as.vector(df[,2]))
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

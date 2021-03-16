@@ -1,0 +1,334 @@
+---
+title: "Untitled"
+author: "Patrick Ma"
+date: "3/6/2020"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE}
+library(readr)
+library(tm)
+library(ggplot2)
+library(lubridate)
+library(tidyverse)
+library(tidytext)
+library(dplyr)
+library(purrr)
+library(stringr)
+library(igraph)
+library(wordcloud2)
+library(ggraph)
+library(topicmodels)
+
+hair_dryer <- read_tsv("~/Downloads/Problem_C_Data/hair_dryer.tsv")
+microwave <- read_tsv("~/Downloads/Problem_C_Data/microwave.tsv")
+pacifier <- read_tsv("~/Downloads/Problem_C_Data/pacifier.tsv")
+#hair_dryer_ratio <- read_tsv("~/Desktop/2020 Spring/2020 C /hair_dryer_ratio.tsv")
+```
+
+
+```{r}
+mean(hair_dryer$star_rating)
+sd(hair_dryer$star_rating)
+hist(hair_dryer$star_rating)
+```
+
+
+```{r}
+mean(hair_dryer$helpful_votes)
+median(hair_dryer$helpful_votes)
+sd(hair_dryer$helpful_votes)
+
+mean(hair_dryer$total_votes)
+median(hair_dryer$total_votes)
+sd(hair_dryer$total_votes)
+
+hair_dryer_ratio = read_tsv("Problem_C_Data/hair_dryer_ratio.tsv")
+
+# mean for helpful ratio when there is a comment
+mean(na.omit(hair_dryer_ratio$helpful_total_ratio))
+```
+
+```{r}
+# extract product that receives more than 50 reviews
+# b/c the median after drop products only receive 1 review  is 44
+tt <- table(hair_dryer_ratio$product_parent)
+mean(tt)
+median(subset(tt, tt>1))
+hist(subset(tt, tt>1), breaks = 100)
+hair_dryer_ratio <- subset(hair_dryer_ratio, product_parent %in% names(tt[tt > 50]))
+length(hair_dryer_ratio$product_parent)
+write_tsv(hair_dryer_ratio,"Problem_C_Data/hair_dryer_ratio.tsv")
+
+```
+
+
+
+
+```{r}
+# x: rating , y: vote helpful ratio
+head(hair_dryer_ratio)
+not_na_idx = is.na(hair_dryer_ratio$helpful_total_ratio)==FALSE
+
+hair_dryer_srtr<-aggregate(star_rating~helpful_total_ratio, hair_dryer_ratio[not_na_idx,] , mean)
+ggplot(data = hair_dryer_srtr, aes(helpful_total_ratio,star_rating))+geom_point() + labs(title = "Scatterplot of mean star rating vs.  helpful ratio (excluding NA) for hair_dryer", y="mean star rating", x = "helpful ratio")
+```
+
+```{r}
+hair_dryer_srtr<-aggregate(helpful_total_ratio~ star_rating, hair_dryer_ratio[not_na_idx,] , mean)
+ggplot(data = hair_dryer_srtr, aes(star_rating,helpful_total_ratio))+geom_line() + labs(title = "mean helpful ratio (excluding NA) vs. star rating for hair_dryer", y="mean helpful ratio", x = "star rating")
+```
+
+* helpful ratio for 5-star rating is highest, while helpful ratio for 1-star rating is lowest
+
+# Vine and verified
+
+```{r}
+sum(hair_dryer_ratio$vine == "Y")/nrow(hair_dryer_ratio)
+hair_dryer_ratio_vine = subset(hair_dryer_ratio, hair_dryer_ratio$vine=="Y")
+hair_dryer_ratio_notvine = subset(hair_dryer_ratio, hair_dryer_ratio$vine=="N")
+mean(hair_dryer_ratio_vine$star_rating)
+mean(hair_dryer_ratio_notvine$star_rating)
+t.test(hair_dryer_ratio_vine$star_rating, hair_dryer_ratio_notvine$star_rating)
+t.test(hair_dryer_ratio_vine$helpful_votes, hair_dryer_ratio_notvine$helpful_votes)
+```
+
+* 0.01560593 of people are vine
+
+* vine people tend to rate higher for hair_dryer
+
+```{r}
+sum(hair_dryer_ratio$verified_purchase == "Y")/nrow(hair_dryer_ratio)
+hair_dryer_ratio_verified = subset(hair_dryer_ratio, hair_dryer_ratio$verified_purchase=="Y")
+hair_dryer_ratio_notverified = subset(hair_dryer_ratio, hair_dryer_ratio$verified_purchase=="N")
+
+mean(hair_dryer_ratio_verified$star_rating)
+mean(hair_dryer_ratio_notverified$star_rating)
+t.test(hair_dryer_ratio_verified$star_rating, hair_dryer_ratio_notverified$star_rating)
+t.test(hair_dryer_ratio_verified$helpful_votes, hair_dryer_ratio_notverified$helpful_votes)
+
+```
+
+* 0.8553618 of reviews are verified
+
+* validated people tend to rate higher for hair_dryer
+
+
+# delete not verified accounts, as their helpful votes are significantly lower than verified account
+```{r}
+hair_dryer_ratio = subset(hair_dryer_ratio, hair_dryer_ratio$verified_purchase=='Y')
+sum(hair_dryer_ratio$verified_purchase=='Y')
+nrow(hair_dryer_ratio)
+```
+
+```{r}
+library(itsmr)
+
+hair_dryer_ratio$review_date=(mdy(hair_dryer_ratio$review_date))
+hair_dryer_ratio$review_month = as.Date(cut(hair_dryer_ratio$review_date, breaks = "month"))
+hair_dryer_ts = data.frame(hair_dryer_ratio[,8],hair_dryer_ratio[,17])
+head(hair_dryer_ts)
+hair_dryer_ts2<-aggregate(star_rating ~ review_month, hair_dryer_ts , mean)
+ggplot( data = hair_dryer_ts2, aes(review_month, star_rating)) + geom_line() + labs(title = "Time series of mean star rating every month vs. review month for hair_dryer", y="mean star rating every month", x = "review month")
+```
+
+
+# clean the corpus
+```{r}
+# clean the review body
+hair_dryer_ratio$review_body = stripWhitespace(removePunctuation(hair_dryer_ratio$review_body))
+hair_dryer_ratio$review_body = tolower(hair_dryer_ratio$review_body)
+
+# clean the review title
+hair_dryer_ratio$review_headline = stripWhitespace(removePunctuation(hair_dryer_ratio$review_headline))
+hair_dryer_ratio$review_headline = tolower(hair_dryer_ratio$review_headline)
+
+write_tsv(hair_dryer_ratio,"Problem_C_Data/hair_dryer_ratio.tsv")
+```
+
+
+
+
+# C.2.a
+
+
+## sentiment analysis & viz the freq table
+
+```{r}
+# load in the libraries we'll need
+library(tidyverse)
+library(tidytext)
+library(glue)
+library(stringr)
+
+
+# get the sentiments of 1 star to 5 stars
+source("GetSentiments.R")
+GetSentiments(hair_dryer_ratio)
+```
+
+
+```{r warning=FALSE}
+source("CloudFreq.R")
+
+CloudFreq(hair_dryer_ratio$review_body)
+```
+
+* From the review body, we can see that blow, dry, cord, powerful, dry appears frequently
+
+
+# bigram
+```{r bigramming function, echo=F}
+bigramming <- function(data){
+  cbigram <- data %>% unnest_tokens(bigram, review_body, token = 'ngrams', n = 2)
+  cbigram_sep <- cbigram %>% separate(bigram, c('first', 'second'), sep = ' ')
+  cbigram2 <- cbigram_sep %>% filter(!first %in% stop_words$word, !second %in% stop_words$word, !str_detect(first,      '\\d'), !str_detect(second, '\\d')) %>% unite(bigram, c(first, second), sep = ' ') 
+  return(cbigram2)
+}
+```
+
+```{r}
+hair_dryer_ratio$review_body <- removeWords(hair_dryer_ratio$review_body,c("dryer","dryers"))
+top_bigrams <- bigramming(hair_dryer_ratio) %>% mutate(Rating = factor(star_rating, levels <- c(5:1))) %>% mutate(bigram = factor(bigram, levels = rev(unique(bigram)))) %>% group_by(star_rating) %>% count(bigram, sort=TRUE) %>% top_n(10, n) %>% ungroup() 
+
+top_bigrams  %>% ggplot(aes(bigram, n, fill = star_rating)) + geom_col(show.legend = FALSE) + facet_wrap(~star_rating, ncol = 3, scales = 'free') + labs(x=NULL, y = 'frequency') + ggtitle('Most Common Bigrams for hair dryer (by star_rating)') + coord_flip()
+```
+
+##Network Visualization
+First, let's do a network visualization of the 5-star reviews. To do so, we will use the `igraph` and `ggraph` libraries to show a network that highlights the shared words within the most common bigrams.
+
+
+```{r igraph, message = F, warning = F, echo=F}
+fivestar <- hair_dryer_ratio %>% filter(star_rating >= (4))
+fivebi <- bigramming(fivestar) %>% count(bigram, sort = TRUE)
+head(fivestar)
+five_graph <- fivebi %>% separate(bigram, c('first','second'), sep = ' ') %>% filter(n > 25) %>% graph_from_data_frame()
+
+set.seed(9190)
+ggraph(five_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(color = 'orangered1', size = 3) +
+  geom_node_text(aes(label = name), vjust = 1.1, hjust = 1.1) + scale_x_continuous(limits = c(2, 18)) +
+  labs(title = "Network analysis of >=4 star review body in hair dryer")
+```
+```{r}
+set.seed(9190)
+
+onestar <- hair_dryer_ratio %>% filter(star_rating <= 2)
+onebi <- bigramming(onestar) %>% count(bigram, sort = TRUE)
+head(onestar)
+one_graph <- onebi %>% separate(bigram, c('first','second'), sep = ' ') %>% filter(n > 5) %>% graph_from_data_frame()
+
+ggraph(one_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(color = 'blue', size = 3) +
+   geom_node_text(aes(label = name), vjust = 1.1, hjust = 1.1) + scale_x_continuous(limits = c(2, 18)) +
+  labs(title = "Network Analysis of Hairdryer Reviews with Rating <= 2 Stars")
+```
+```{r}
+library(ngram)
+#hair_dryer$wordc=rep(NA,8981)
+for(i in 1:7506){
+  hair_dryer_ratio$wordc[i]=wordcount(hair_dryer_ratio$review_body[i])
+}
+View(hair_dryer_ratio)
+```
+
+```{r}
+hair_dryer_ratio$row_num <- seq.int(nrow(hair_dryer_ratio))
+library(DescTools)
+hair_dryer_ratio$row_num <- rev(hair_dryer_ratio$row_num)
+transform(hair_dryer_ratio, hair_dryer_ratio$row_num)
+```
+```{r}
+df2=data.frame(hair_dryer_ratio[,8])
+library(itsmr)
+View(df2)
+
+df2$star_rating=as.double(df2$star_rating)
+plotc(maunaloa_1009_0919)
+write.csv(df2,file="/Users/hzn//Desktop/2020 SPRING/xx.csv")
+df3<- read_csv("~/Desktop/2020 Spring/xx.csv")
+df3=df3[,-1]
+View(df3)
+unlist(df3)
+as.matrix(df3)
+as.double(df3$star_rating)
+df4=df3[1:100,]
+
+
+acf(max1$star_rating,lag.max=40,type="correlation",plot=TRUE)
+a=c("season",10)
+resid1=Resid(max1$star_rating,a)
+#plotc(resid1)
+#acf(resid1,lag.max=40,type="correlation",plot=TRUE)
+
+b=c("season",10, "trend",1)
+resid2=Resid(max1$star_rating,b)
+
+#plotc(resid2)
+#acf(resid2,lag.max=40,type="correlation",plot=TRUE)
+
+c=arma(resid2,3,3) 
+resid4=Resid(resid2, a = c)
+#acf(resid4,lag.max=40,type="correlation",plot=TRUE)
+#test(resid4)
+library(itsmr)
+forecast(max1$star_rating,b,c,h=24,opt=3)
+
+library(forecast)
+library(stats)
+max1=subset(hair_dryer_ratio,product_parent=="593915883")
+for(i in 1:129){
+  if(max1$star_rating[i]<=3){
+    max1$star_rating[i]=0
+  } else{
+    max1$star_rating[i]=1
+  }
+}
+plotc(max1$star_rating)
+auto.arima(max1$star_rating, trace=TRUE)
+
+plotc(max1$star_rating)
+View(max1)
+a=c("season",10)
+resid1=Resid(max1$star_rating,a)
+plotc(resid1)
+
+
+predict(arima(max1$star_rating, order = c(3,0,3)), n.ahead = 30)
+forecast(arima(max1$star_rating, order = c(3,0,3)),h=24,opt=2)
+print(arima(max1$star_rating, order = c(3,0,3)))
+
+# 把45星 123分开看 做logistic
+
+plotc(max1$star_rating)
+
+View(max1)
+
+library(forecast)
+futurVal=forecast(arima(max1$star_rating[300:500], order = c(3,0,3)),h=30, level=c(70))
+plot(futurVal)
+
+tsd=ts(max1$star_rating)
+View(tsd)
+```
+```{r}
+library(smooth)
+max1=subset(hair_dryer_ratio,product_parent=="357308868")
+a=es(max1$star_rating, h=18, holdout=TRUE, silent=FALSE)
+print(a)
+
+library(forecast)
+fit_ses <- ses(max1$star_rating)
+summary(fit_ses)
+#Plot the forecasted values
+plot(fit_ses)
+
+fit_holt <- holt(max1$star_rating)
+summary(fit_holt)
+#Plot the forecasted values
+plot(fit_holt)
+print(fit_holt)
+```
+

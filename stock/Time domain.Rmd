@@ -1,0 +1,224 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# Load packages for data download and transformation
+library(dplyr)
+library(Quandl)
+library(tidyr)
+library(forecast)
+
+# Dimport the data: annual GDP
+usgdp <- read_csv("~/Desktop/GDPC11.csv")
+usgdp$GDPC1<-as.numeric(usgdp$GDPC1)
+
+
+# Take logs of the original data
+usgdp$lgdp=log(usgdp$GDPC1)
+usgdp<-na.omit(usgdp)
+View(usgdp)
+
+# Plot the result
+library(ggplot2)
+ggplot(usgdp, aes(x = DATE, y = lgdp)) +
+  geom_line() +
+  ylab("log(GDP)")+
+  theme_classic()
+```
+
+```{r}
+# Add a trend
+usgdp <- usgdp %>%
+  mutate(trend = 1:n())
+
+# Estimate the model with a constant and a trend
+time_detrend <- fitted(lm(lgdp ~ trend, data = usgdp))
+names(time_detrend) <- NULL
+
+# Add series to main data frame
+usgdp <- usgdp %>%
+  mutate(lin_trend = time_detrend)
+
+# Create data frame for the plot
+temp <- usgdp %>%
+  select(DATE, lgdp, lin_trend) %>%
+  gather(key = "Variable", value = "value", -DATE)
+
+# Plot
+ggplot(temp, aes(x = DATE, y = value, colour = Variable)) +
+  geom_line() +
+  theme_classic() +
+  labs(title = "Residuals of a linear trend estimation",
+       x = "Date", y = "log(GDP)")
+```
+```{r}
+# eliminate the linear trend
+usgdp <- usgdp %>%
+  mutate(lin_cycle = lgdp - lin_trend)
+
+# plot the detrend time series
+ggplot(usgdp, aes(x = DATE, y = lin_cycle)) +
+  geom_line() +
+  geom_hline(yintercept=0,color="red")+
+  theme_classic()
+
+
+# reject I(0): p-value is too small
+Box.test(usgdp$lin_cycle,lag=1, type="Ljung-Box")
+
+# accept I(1): stationary after first order differencing
+Box.test(diff(usgdp$lin_cycle,lag=1, differences = 1),lag=1, type="Ljung-Box")
+```
+```{r}
+# query data from fred
+library(quantmod)
+getSymbols("DJIA",src="yahoo",warnings = TRUE)
+DJIA<-data.frame(DJIA)
+```
+```{r}
+# Dimport the data: annual GDP
+library(readr)
+djia <- read_csv("~/Desktop/DJI1.csv")
+View(djia)
+djia$AClose<-as.numeric(djia$AClose)
+
+
+# Take logs of the original data
+djia$log=log(log(djia$AClose))
+djia<-na.omit(djia)
+
+lambda<-BoxCox.lambda(djia$log)
+djia$box<-BoxCox(djia$log,lambda)
+
+# Plot the result
+library(ggplot2)
+ggplot(djia, aes(x = Date, y =log)) +
+  geom_line() +
+  ylab("log")+
+  theme_classic()
+
+ggplot(djia, aes(x = Date, y =box)) +
+  geom_line() +
+  ylab("log")+
+  theme_classic()
+```
+```{r}
+# Add a trend
+djia <- djia %>%
+  mutate(trend = 1:n())
+
+# Estimate the model with a constant and a trend
+time_detrend <- fitted(lm(box ~ trend, data = djia))
+names(time_detrend) <- NULL
+
+# Add series to main data frame
+djia <- djia %>%
+  mutate(lin_trend = time_detrend)
+
+# Create data frame for the plot
+temp2 <- djia %>%
+  select(Date, box, lin_trend) %>%
+  gather(key = "Variable", value = "value", -Date)
+
+# Plot
+ggplot(temp2, aes(x = Date, y = value, colour = Variable)) +
+  geom_line() +
+  theme_classic() +
+  labs(title = "Residuals of a linear trend estimation",
+       x = "Date", y = "log(GDP)")
+```
+```{r}
+# eliminate the linear trend
+djia <- djia %>%
+  mutate(lin_cycle = log - lin_trend)
+
+# plot the detrend time series
+ggplot(usgdp, aes(x = DATE, y = lin_cycle)) +
+  geom_line() +
+  geom_hline(yintercept=0,color="red")+
+  theme_classic()
+
+# reject I(0): p-value is too small
+Box.test(djia$log,lag=1, type="Ljung-Box")
+# accept I(1)
+Box.test(diff(djia$log,lag=1, differences = 1),lag=1, type="Ljung-Box")
+d1<-diff(djia$log,lag=1, differences = 1)
+
+Box.test(sqrt(diff(djia$log,lag=1, differences = 1)),lag=1, type="Ljung-Box")
+
+# accept I(1)
+Box.test(diff(djia$lin_cycle,lag=1, differences = 1),lag=1, type="Ljung-Box")
+```
+```{r}
+library(forecast)
+auto.arima(djia$log)
+d=arima(djia$log,order=c(2,1,2))
+checkresiduals(d)
+```
+
+```{r}
+# Dimport the data: annual GDP
+nas <- read_csv("~/Desktop/NAS1.csv")
+View(nas)
+nas$NAS<-as.numeric(nas$NAS)
+
+
+# Take logs of the original data
+nas$log=log(nas$NAS)
+nas<-na.omit(nas)
+
+lambda2<-BoxCox.lambda(nas$log)
+nas$box<-BoxCox(nas$log,lambda)
+
+# Plot the result
+library(ggplot2)
+ggplot(nas, aes(x = DATE, y =log)) +
+  geom_line() +
+  ylab("log")+
+  theme_classic()
+```
+```{r}
+# Add a trend
+nas <- nas %>%
+  mutate(trend = 1:n())
+
+# Estimate the model with a constant and a trend
+time_detrend <- fitted(lm(log ~ trend, data = nas))
+names(time_detrend) <- NULL
+
+# Add series to main data frame
+nas <- nas %>%
+  mutate(lin_trend = time_detrend)
+
+# Create data frame for the plot
+temp3 <- nas %>%
+  select(DATE, log, lin_trend) %>%
+  gather(key = "Variable", value = "value", -DATE)
+
+# Plot
+ggplot(temp3, aes(x = DATE, y = value, colour = Variable)) +
+  geom_line() +
+  theme_classic() +
+  labs(title = "Residuals of a linear trend estimation",
+       x = "Date", y = "log(GDP)")
+```
+```{r}
+View(sp)
+# reject I(0): p-value is too small
+Box.test(nas$box,lag=1, type="Ljung-Box")
+# accept I(1)
+Box.test(diff(nas$box,lag=1, differences = 1),lag=1, type="Ljung-Box")
+# accept I(1)
+Box.test(diff(sp$lin_cycle,lag=1, differences = 1),lag=1, type="Ljung-Box")
+```
+```{r}
+auto.arima(nas$log)
+e=arima(nas$log,order=c(2,1,2))
+checkresiduals(e)
+data(euretail)
+autoplot(euretail) + ylab("Retail index") + xlab("Year")
+```
+
+

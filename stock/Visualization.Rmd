@@ -1,0 +1,220 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(readr)
+library(stringr)
+library(ggplot2)
+# import data sets
+brasil <- read_csv("Covid_data/Brasil.csv")
+canada <- read_csv("Covid_data/Canada.csv")
+china <- read_csv("Covid_data/China.csv")
+france <- read_csv("Covid_data/France.csv")
+germany <-read_csv("Covid_data/Germany.csv")
+india <- read_csv("Covid_data/India.csv")
+italy <- read_csv("Covid_data/Italy.csv")
+japan <- read_csv("Covid_data/Japan.csv")
+russia <- read_csv("Covid_data/Russia.csv")
+thailand <- read_csv("Covid_data/Thailand.csv")
+uk <- read_csv("Covid_data/UK.csv")
+us <- read_csv("Covid_data/United States.csv")
+
+# remove space in column names
+names(brasil)<-str_replace_all(names(brasil), c(" " = "_" , "-" = "_" ))
+names(china)<-str_replace_all(names(china), c(" " = "_" , "-" = "_" ))
+names(canada)<-str_replace_all(names(canada), c(" " = "_" , "-" = "_" ))
+names(france)<-str_replace_all(names(france), c(" " = "_" , "-" = "_" ))
+names(germany)<-str_replace_all(names(germany), c(" " = "_" , "-" = "_" ))
+names(india)<-str_replace_all(names(india), c(" " = "_" , "-" = "_" ))
+names(italy)<-str_replace_all(names(italy), c(" " = "_" , "-" = "_" ))
+names(japan)<-str_replace_all(names(japan), c(" " = "_" , "-" = "_" ))
+names(russia)<-str_replace_all(names(russia), c(" " = "_" , "-" = "_" ))
+names(thailand)<-str_replace_all(names(thailand), c(" " = "_" , "-" = "_" ))
+names(uk)<-str_replace_all(names(uk), c(" " = "_" , "-" = "_" ))
+names(us)<-str_replace_all(names(us), c(" " = "_" , "-" = "_" ))
+
+# change the format of the date
+brasil$Date<-as.Date(brasil$Date,format = "%m/%d/%y")
+china$Date<-as.Date(china$Date,format = "%m/%d/%y")
+canada$Date<-as.Date(canada$Date,format = "%m/%d/%y")
+germany$Date<-as.Date(germany$Date,format = "%m/%d/%y")
+thailand$Date<-as.Date(thailand$Date,format = "%m/%d/%y")
+
+# aggregate all datsets into one 
+final<-rbind(brasil,canada,china,germany,france,india,italy,japan,russia,thailand,uk,us)
+View(final)
+```
+
+```{r}
+# squash functions in-between 
+squash_axis <- function(from, to, factor) { 
+    # A transformation function that squashes the range of [from, to] by factor on a given axis 
+
+    # Args:
+    #   from: left end of the axis
+    #   to: right end of the axis
+    #   factor: the compression factor of the range [from, to]
+    #
+    # Returns:
+    #   A transformation called "squash_axis", which is capsulated by trans_new() function
+
+  trans <- function(x) {    
+      # get indices for the relevant regions
+      isq <- x > from & x < to
+      ito <- x >= to
+
+      # apply transformation
+      x[isq] <- from + (x[isq] - from)/factor
+      x[ito] <- from + (to - from)/factor + (x[ito] - to)
+
+      return(x)
+  }
+
+  inv <- function(x) {
+
+      # get indices for the relevant regions
+      isq <- x > from & x < from + (to - from)/factor
+      ito <- x >= from + (to - from)/factor
+
+      # apply transformation
+      x[isq] <- from + (x[isq] - from) * factor
+      x[ito] <- to + (x[ito] - (from + (to - from)/factor))
+
+      return(x)
+  }
+
+# return the transformation
+  return(trans_new("squash_axis", trans, inv))
+}
+```
+
+```{r}
+# create a function to rescale y-axis
+# define a transformation that divides the values above intercept by the reducer
+library(scales)
+ntrans <- function(intercept, reducer) {
+  
+    trans <- function(x, i = intercept, r = reducer) {
+        sapply(x, function(x) {
+            if (x < i) x
+            else x / r + i
+        })
+    }
+
+    inv <- function(x, i = intercept, r = reducer) {
+        sapply(x, function(x) {
+            if(!is.na(x)) {
+                if (x > i) x
+                else (x - i) * r
+            }
+        })
+    }
+
+    trans_new(name = 'custom',
+              transform = trans,
+              inverse = inv
+              )
+}
+
+ptrans <- function(intercept, reducer) {
+  
+    trans <- function(x, i = intercept, r = reducer) {
+        sapply(x, function(x) {
+            if (x < i) x
+            else x / r + i
+        })
+    }
+
+    inv <- function(x, i = intercept, r = reducer) {
+        sapply(x, function(x) {
+            if(!is.na(x)) {
+                if (x < i) x
+                else (x - i) * r
+            }
+        })
+    }
+
+    trans_new(name = 'custom',
+              transform = trans,
+              inverse = inv
+              )
+}
+
+# test on a random dataset
+ggplot(data.frame(x = c(-10, 30), y = c(-100, 250)), aes(x, y)) +
+    stat_function(fun = function(x) 12 + 180 / (1 + exp(-.759*(x - 7.69))),
+                  size = 2,
+                  color = "yellow") +
+    coord_cartesian(ylim = c(-100, 250))+
+    geom_abline(intercept = 44, slope = 0, lty = 2)+
+    scale_x_continuous(limits = c(-5, 25)) +
+    coord_trans(y = ptrans(20,5)) 
+```
+
+```{r}
+library(RColorBrewer)
+display.brewer.pal(12, "Set3")
+mycolors<-brewer.pal(12, "Set3")
+length(mycolors)
+
+nnc<-ggplot(final, aes(x=Date, y=net_new_confirmed,colour=Country)) +
+  geom_line()+
+  xlab("Date") +
+  ylab("Net New Confirmed Cases")+
+  geom_abline(intercept = 10000, slope = 0, lty = 2)+
+  coord_trans(y = ptrans(intercept = 10000, reducer =100))+
+  theme(axis.text.x=element_text(angle=60, hjust=1),legend.position="right")+
+  ggtitle(" ")
+
+# customize color using internal color set
+nnc + scale_colour_manual(name = "grp",values = mycolors)
+  #scale_x_date(date_labels = "%b/%d")
+```
+
+
+
+```{r}
+mp<-ggplot(china[8:165,], aes(x=Date, y=medical_power)) +
+  #geom_line(y=brasil[2:128,]$net_new_confrimed,color="blue")+
+  geom_line(y=canada$medical_power,color="#FF7F50")+
+  geom_line(color="#69b3a2") + 
+  xlab("Date") +
+  ylab("Medical Power")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))+
+  ggtitle("Net New Cofirmed")
+
+mp + scale_x_date(date_labels = "%b/%d")
+mp + expand_limits(y=c(0, 1))
+```
+```{r}
+nccma<-ggplot(final, aes(x=Date, y=net_new_confirmed_moving_average, color=Country)) +
+  geom_line()+
+  xlab("Date") +
+  geom_abline(intercept = 10000, slope = 0, lty = 2)+
+  coord_trans(y = mtrans(intercept = 10000, reducer =20))+
+  theme(axis.text.x=element_text(angle=60, hjust=1))+
+  ggtitle("Net New Cofirmed")
+
+nccma + scale_x_date(date_labels = "%b/%d")
+#nccma + expand_limits(y=c(-1, 1))
+```
+```{r}
+cfr<-ggplot(china[8:165,], aes(x=Date, y=case_fatality_ratio_1)) +
+  #geom_line(y=brasil[2:128,]$net_new_confrimed,color="blue")+
+  geom_line(y=canada$case_fatality_ratio,color="#FF7F50")+
+  geom_line(color="#69b3a2") + 
+  xlab("Date") +
+  theme(axis.text.x=element_text(angle=60, hjust=1))+
+  ggtitle("Net New Cofirmed")
+
+cfr + scale_x_date(date_labels = "%b/%d")
+cfr + expand_limits(y=c(0, 0.1))
+```
+
+

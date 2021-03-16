@@ -1,0 +1,51 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(readr)
+library(spectral)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+Thailand<-read_csv("~/Desktop/MacroR/Thailand SET50(^S50.GI).csv")
+new<-Thailand[583:977,1:5]
+new<-na.omit(new)
+View(new)
+```
+
+```{r}
+library(TSstudio)
+library(xts)
+library(mFilter)
+
+df=new[,1:2]
+df$Date=as.Date(df$Date)
+df$V1=as.double(df$V1)
+str(df)
+
+inds <- df$Date
+dff=ts(df[,2],start=c(2018,as.numeric(format(inds[1], "%j"))),frequency = 365)
+ts_plot(dff)
+
+```
+```{r}
+# BK Filter
+# US unemployment rate
+data(unemp)
+opar <- par(no.readonly=TRUE)
+unemp.bk <- bkfilter(unemp)
+plot(unemp.bk)
+```
+```{r}
+unemp.cf <- cffilter(unemp)
+plot(unemp.cf)
+```
+
+
+

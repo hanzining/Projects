@@ -1,0 +1,116 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(readr)
+usdf<-read_csv("United States.csv")
+usdf<-as.data.frame(usdf[1:164,])
+View(usdf)
+```
+```{r}
+library(RiverLoad)
+df=usdf[,1:5]
+# basic statistics
+summary(usdf)
+# by month
+dff<-as.data.frame(df[1:2])
+dff$datetime<-dff$Date
+dff$flow<-dff$Confirmed_Cases
+dff<-dff[,3:4]
+
+monthly.mean(dff, "sd")
+```
+
+```{r}
+library(ggplot2)
+View(df)
+
+# time series plot of daily confirmed cases
+dc <- ggplot(df, aes(x=Date, y=Confirmed_Cases)) +
+  geom_line(color="#69b3a2") + 
+  geom_line(y=df$Cumulative_confirmed_cases/50,color="#FF7F50") + 
+  scale_y_continuous( name = "Daily",sec.axis = sec_axis( trans=~.*50, name="Cumulative"))+
+  xlab("Date") +
+  theme(axis.text.x=element_text(angle=60, hjust=1)) 
+dc + scale_x_date(date_labels = "%b/%d")
+
+# time series plot of cumulative confirmed cases
+cc <- ggplot(df, aes(x=Date, y=Cumulative_confirmed_cases)) +
+  geom_line(color="#69b3a2") + 
+  xlab("Date") +
+  theme(axis.text.x=element_text(angle=60, hjust=1)) 
+cc
+```
+
+```{r}
+dc + stat_smooth(color = "#FC4E07", fill = "#FC4E07", method = "loess")
+```
+```{r}
+# take log of the daily confimred cases
+# get rid of the entries with 0 cases 
+for (i in 1:164) {
+    if (df$Confirmed_Cases[i] >0) {
+       df$log[i]=log(df$Confirmed_Cases[i])
+    }
+}
+
+logdf=na.omit(df)
+View(logdf)
+
+# plot the time series of log(daily confirmed cases)
+dclog <- ggplot(logdf, aes(x=Date, y=log)) +
+  geom_line(color="#69b3a2") + 
+  xlab("Date")+
+  geom_smooth()
+  
+dclog + scale_x_date(date_labels = "%b/%d")
+```
+
+
+
+```{r}
+library(itsmr)
+library(forecast)
+library(stats)
+plotc(df$Confirmed_Cases)
+plotc(logdf$log)
+auto.arima(df$Confirmed_Cases)
+auto.arima(logdf$log)
+
+usdf<-usdf[-62,]
+View(usdf)
+plotc(usdf$medical_power)
+
+
+tt<-ggplot(usdf, aes(x=Date, y=Cumulative_confirmed_cases)) +
+  geom_line(color="#69b3a2") + 
+  xlab("Date") +
+  theme(axis.text.x=element_text(angle=60, hjust=1)) 
+tt+scale_x_date(date_labels = "%b/%d")
+
+plotc(log2(usdf$medical_power))
+plotc(log1p(usdf$medical_power))
+mod=lm(usdf$Confirmed_Cases~usdf$medical_power)
+
+library(spectral)
+filter.fft(df$Confirmed_Cases,x=NULL)
+```
+```{r}
+a=c("trend",1)
+resid1=Resid(logdf$log,a)
+plotc(resid1)
+test(resid1)
+b=arima(logdf$log,order=c(1,1,3))
+b
+summary(b)
+checkresiduals(b)
+resid2=Resid(resid1, a = b)
+test(resid2)
+```
+

@@ -1,0 +1,171 @@
+---
+title: "BC Extraction"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+# Load packages for data download and transformation
+library(dplyr)
+library(Quandl)
+library(tidyr)
+
+# Download data
+usgdp <- read_csv("~/Desktop/GDPC1.csv")
+
+# Take logs of the original data
+usgdp$lgdp=log(usgdp$GDPC1)
+usgdp<-na.omit(usgdp)
+View(usgdp)
+
+library(ggplot2)
+ggplot(usgdp, aes(x = DATE, y = lgdp)) +
+  geom_line() +
+  ylab("log(GDP)")+
+  theme_classic()
+```
+```{r}
+# Add a trend
+data <- data %>%
+  mutate(trend = 1:n())
+
+# Estimate the model with a constant and a trend
+time_detrend <- fitted(lm(lgdp ~ trend, data = data))
+names(time_detrend) <- NULL
+
+# Add series to main data frame
+data <- data %>%
+  mutate(lin_trend = time_detrend)
+
+# Create data frame for the plot
+temp <- data %>%
+  select(DATE, lgdp, lin_trend) %>%
+  gather(key = "Variable", value = "value", -DATE)
+
+# Plot
+ggplot(temp, aes(x = DATE, y = value, colour = Variable)) +
+  geom_line() +
+  theme_classic() +
+  labs(title = "Residuals of a linear trend estimation",
+       x = "Quarter", y = "")
+```
+
+
+```{r}
+# Load the package
+library(mFilter)
+
+# Run HP filter
+hp_gdp <- hpfilter(data$lgdp, freq = 1600)
+
+# Add the cyclical component of the HP filter and
+# the linearly detrended sereis to the main data frame
+data <- data %>%
+  mutate(hp = hp_gdp$cycle,
+         lin_cycle = lgdp - lin_trend)
+
+# Create data frame for the plot
+temp <- data %>%
+  select(DATE, hp, lin_cycle) %>%
+  gather(key = "Variable", value = "value", -DATE) %>%
+  filter(!is.na(value)) %>%
+  mutate(Variable = factor(Variable, levels = c("hp", "lin_cycle"),
+                           labels = c("HP filter", "Residuals of\na linear trend\nestimation")))
+
+# Plot
+ggplot(temp, aes(x = DATE, y = value, colour = Variable)) +
+  geom_hline(yintercept = 0, colour = "grey") +
+  geom_line() +
+  theme_classic() +
+  labs(title = "HP filter",
+       x = "Qurarter", y = "")
+```
+```{r}
+# Run BK filter
+bk_gdp <- bkfilter(data$lgdp, pl = 6, pu = 32, nfix = 12)
+
+# Add cyclical component to the main data frame
+data <- data %>%
+  mutate(bk = bk_gdp$cycle[, 1])
+
+# Create data frame for the plot
+temp <- data %>%
+  select(DATE, hp, bk) %>%
+gather(key = "Variable", value = "value", -DATE) %>%
+  filter(!is.na(value)) %>%
+  mutate(Variable = factor(Variable,
+                           levels = c("hp", "bk"),
+                           labels = c("HP filter", "BK filter")))
+
+# Plot
+ggplot(temp, aes(x = DATE, y = value, colour = Variable)) +
+  geom_hline(yintercept = 0, colour = "grey") +
+  geom_line() +
+  theme_classic() +
+  labs(title = "Baxter-King filter",
+       x = "Qurarter", y = "")
+```
+```{r}
+# Run CF filter
+cf_gdp <- cffilter(data$lgdp, pl = 6, pu = 32, nfix = 12)
+View(cf_gdp)
+
+# Add cyclical component to the main data frame
+data <- data %>%
+  mutate(cf = cf_gdp$cycle[, 1])
+
+# Create data frame for the plot
+temp <- data %>%
+  select(DATE, hp, bk,cf) %>%
+gather(key = "Variable", value = "value", -DATE) %>%
+  filter(!is.na(value)) %>%
+  mutate(Variable = factor(Variable,
+                           levels = c("hp", "bk","cf"),
+                           labels = c("HP filter", "BK filter","CF filter")))
+
+# Plot
+ggplot(temp, aes(x = DATE, y = value, colour = Variable)) +
+  geom_hline(yintercept = 0, colour = "grey") +
+  geom_line() +
+  theme_classic() +
+  labs(title = "Christiano-Fitzgerald filter",
+       x = "Qurarter", y = "")
+
+```
+```{r}
+library(expsmooth)
+exp_gdp<- HoltWinters(data$lgdp, beta=FALSE, gamma=FALSE)
+```
+
+```{r}
+test(usgdp$lgdp)
+test(diff(usgdp$lgdp,lag=1, differences = 1))
+test(diff(usgdp$lgdp,lag=1, differences = 2))
+
+test(usgdp$lin_cycle)
+test(diff(usgdp$lin_cycle,lag=1, differences = 1))
+test(diff(usgdp$lin_cycle,lag=1, differences = 2))
+
+Box.test(diff(usgdp$lin_cycle,lag=1, differences = 2),lag=1, type="Ljung-Box")
+
+library(fUnitRoots)
+
+# first differencing: reject 
+d<-diff(usgdp$lin_cycle,lag=1, differences = 1)
+plot(diff(d,lag=1, differences = 1))
+
+
+test(diff(usgdp$lin_cycle,lag=1, differences = 1))
+unitrootTest(usgdp$lin_cycle)
+unitrootTest(diff(usgdp$lin_cycle,lag=1, differences = 3))
+
+# second differencing 
+test(diff(usgdp$lin_cycle, differences = 3))
+
+library(tseries)
+adf.test(diff(usgdp$lin_cycle, differences = 4))
+```
+

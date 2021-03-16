@@ -1,0 +1,66 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# This chunk is for weekly Dow Jones Industrial Average (^DJI) data, source=yahoo
+```{r}
+# Dimport the data
+library(readr)
+djia <- read_csv("~/Desktop/DJI1.csv")
+View(djia)
+djia$AClose<-as.numeric(djia$AClose)
+
+
+# Take logs of the original data
+djia$log=log(log(djia$AClose))
+djia<-na.omit(djia)
+
+# reject I(0) and I(2): p-value is too small
+Box.test(djia$log,lag=1, type="Ljung-Box")
+Box.test(diff(djia$log,lag=1, differences = 2),lag=1, type="Ljung-Box")
+
+# accept I(1): large enough p-value after transformation(take square root)
+Box.test(sqrt(diff(djia$log,lag=1, differences = 1)),lag=1, type="Ljung-Box")
+```
+# This chunk is for weekly NASDAQ Composite (^IXIC) data, source=yahoo
+```{r}
+# Dimport the data
+nas <- read_csv("~/Desktop/NAS1.csv")
+View(nas)
+nas$AClose<-as.numeric(nas$AClose)
+
+
+# Take logs of the original data
+nas$log=log(nas$AClose)
+nas<-na.omit(nas)
+
+# reject I(0) and I(2): p-value is too small
+Box.test(nas$log,lag=1, type="Ljung-Box")
+Box.test(diff(nas$log,lag=1, differences = 2),lag=1, type="Ljung-Box")
+
+# accept I(1): p-value > 0.01
+Box.test(diff(nas$log,lag=1, differences = 1),lag=1, type="Ljung-Box")
+```
+# This chunk is for weekly S&P500 (^GSPC) data, source=yahoo
+```{r}
+# Dimport the data
+sp <- read_csv("~/Desktop/SP500.csv")
+View(sp)
+sp$AClose<-as.numeric(sp$AClose)
+
+# Take logs of the original data
+sp$log=log(sp$AClose)
+sp<-na.omit(sp)
+
+# reject I(0) and I(2): p-value is too small
+Box.test(sp$log,lag=1, type="Ljung-Box")
+Box.test(diff(sp$log,lag=1, differences = 2),lag=1, type="Ljung-Box")
+
+# accept I(1): p-value > 0.01
+Box.test(diff(sp$log,lag=1, differences = 1),lag=1, type="Ljung-Box")
+```
+

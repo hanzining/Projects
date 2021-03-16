@@ -1,0 +1,78 @@
+---
+title: "556 Group Project"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(itsmr)
+data <- scan("/Users/hzn//Desktop/2019 FALL/STOR 556/DATA/maunaloa.tsm")
+View(data)
+plotc(data)
+```
+
+```{r}
+newdata=data[1:96]
+#View(newdata)
+write.csv(newdata,file="/Users/hzn//Desktop/2019 FALL/STOR 556/DATA/newdata.csv")
+leftover=data[97:120]
+write.csv(leftover,file="/Users/hzn//Desktop/2019 FALL/STOR 556/DATA/leftover.csv")
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+plotc(newdata)
+```
+```{r}
+acf(newdata,lag.max=40,type="correlation",plot=TRUE)
+```
+```{r}
+a=c("season",12)
+resid1=Resid(newdata,a)
+plotc(resid1)
+acf(resid1,lag.max=40,type="correlation",plot=TRUE)
+```
+```{r}
+b=c("season",12, "trend",1)
+resid2=Resid(newdata,b)
+
+plotc(resid2)
+acf(resid2,lag.max=40,type="correlation",plot=TRUE)
+```
+
+
+```{r}
+c=arma(resid2,1,1) 
+resid4=Resid(resid2, a = c)
+acf(resid4,lag.max=40,type="correlation",plot=TRUE)
+test(resid4)
+forecast(newdata,b,c,h=24,opt=0)
+help(forecast)
+```
+```{r}
+forecast=forecast(newdata,b,c,h=24,opt=3)
+resid_final=forecast$pred-leftover
+t.test(resid_final)
+```
+```{r}
+nov=forecast(data,b,c,h=1,opt=1,alpha=0.01)
+nov=forecast(data,b,c,h=1,opt=1,alpha=0.05)
+```
+```{r}
+library(car)
+model2 <- lm(salary ~ yrs.service + rank + discipline + sex,
+             data = Salaries)
+Anova(model2)
+```
+
+```{r}
+Salaries
+```
+

@@ -1,0 +1,42 @@
+Learn To code, Learn To Think, by Tania Lombrozo. npr.org, June 9, 2014, https://www.npr.org/sections/13.7/2014/06/09/320309576/learn-to-code-learn-to-think
+
+Is learning to code software a valuable skill? Is it one that prepares people to join the workforce of the future?
+
+On the one hand, the popularity of computer science as a college major and the proliferation of coding bootcamps suggest the answer
+is decidedly "yes." Code.org, a non-profit that encourages education and diversity in computer science, currently invites visitors to
+its homepage to join over a million others in agreeing with the following statement:
+
+"Every student in every school should have the opportunity to learn computer science"
+On the other hand, some endorse the headline on Kevin Maney's May 29th article at Newsweek: "Computer Programming Is A Dying Art," one that
+will soon be taken over by smarter, more "brain-like" computers. So, perhaps the answer as to whether you should learn to code is "don't bother."
+In fact, Kevin Maney ends his article with the following prediction:
+
+" ... in 2030, when today's 10-year-olds are in the job market, they'll need to be creative, problem-solving design thinkers who can teach
+a machine how to do things. Most of them will find that coding skills are about as valuable as cursive handwriting."
+Maney's timeline may be optimistic but the prospect isn't crazy. Gary Marcus and Ernest Davis, cognitive and computer scientists blogging
+for The New Yorker, identify what they see as "fundamental obstacles" (but not insurmountable obstacles) to self-coding computers.
+These include the fact that computers are still far from achieving human levels of language comprehension or of general real-world knowledge
+both longstanding and deeply challenging problems in AI.
+
+But there's another reason to learn to code, whether or not self-coding computers are on the horizon.
+And it's this: learning to code is a good way to learn to think.
+
+Some of the very properties of computer languages that can be cumbersome and difficult to master, such as the need to specify everything explicitly,
+to consider exceptions, to understand recursion and to think through downstream consequences, are among the most valuable for thinking.
+It's precisely because human thinking is so often underspecified, and human language so often ambiguous, that designing computers that can code from
+human instruction is such a hard problem for AI. But it's also why learning a formal, expressive language is so valuable for human minds.
+
+In his article, Maney writes:
+"In the end, far more people will be able to program without knowing code. They'll just need good higher-level design thinking so they can clearly,
+logically explain the computer's task." It may be that learning to code is the best way to develop those very thinking skills.
+
+Programming languages come and go. And it doesn't much matter whether most people master the subtleties of semicolon use in Python versus C.
+But the basic abilities to think a problem through carefully, clearly and thoroughly are essential for just about all people in just about all fields.
+
+The analogy to cursive handwriting turns out to be an instructive one, though perhaps not for the reasons intended.
+New research, summarized in a June 2nd article by Maria Konnikova at The New York Times, suggests that the process of learning to write cursive
+may itself be important for learning to read, to write and, perhaps, even to generate ideas, no matter that the resulting ability is often
+replaced by a keyboard and decent typing proficiency.
+
+Similarly, it may be that programming is a skill that makes us the kinds of thinkers that we need to be, even if we ultimately have the option
+of outsourcing our coding to clever machines.

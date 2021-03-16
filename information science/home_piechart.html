@@ -1,0 +1,28 @@
+
+<html>
+  <head>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+      google.load("visualization", "1", {packages:["corechart"]});
+      google.setOnLoadCallback(drawChart);
+      function drawChart() {
+        var data = new google.visualization.DataTable({"cols":[{"id":"homeMemberState","label":"homeMemberState","type":"string"},{"id":"Frequency","label":"Frequency","type":"number"}],"rows":[{"c":[{"v":"IRELAND"},{"v":7}]},{"c":[{"v":"GERMANY"},{"v":1}]},{"c":[{"v":"FRANCE"},{"v":33}]},{"c":[{"v":"SPAIN"},{"v":7}]},{"c":[{"v":"LATVIA"},{"v":2}]},{"c":[{"v":"SWEDEN"},{"v":14}]},{"c":[{"v":"DENMARK"},{"v":3}]},{"c":[{"v":"LUXEMBOURG"},{"v":12}]},{"c":[{"v":"UNITED KINGDOM"},{"v":67}]},{"c":[{"v":"NETHERLANDS"},{"v":27}]},{"c":[{"v":"ITALY"},{"v":13}]},{"c":[{"v":"AUSTRIA"},{"v":10}]},{"c":[{"v":"PORTUGAL"},{"v":1}]},{"c":[{"v":"MALTA"},{"v":1}]},{"c":[{"v":"FINLAND"},{"v":2}]}]});
+
+        var options = { 
+        title: 'European Venture Capital Funds (EuVECA) Top Member States of the European Union (EU)', 
+        colors: ['#aee5f2','#7fb2d4','#95dec5','#95dea2','#eef5a6','#f0c543','#aec2b7','#d2d6d4','#e0440e', '#e6693e', 
+        '#ec8f6e', '#f3b49f', '#f6c7b6','#d3b2ed','#9a5dc9'], 
+        pieHole: 0.3, 
+        legend:'left', 
+        width: 1200, 
+        height: 800 }; 
+
+        var chart = new google.visualization.PieChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
+  <body>
+    <div id="chart_div" style="width: 900px; height: 500px;"></div>
+  </body>
+</html>
